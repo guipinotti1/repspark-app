@@ -2,38 +2,56 @@ name: RepSpark → Sheets
 
 on:
   workflow_dispatch: {}
+  # (opcional) agendar execução automática
+  # schedule:
+  #   - cron: "15 9 * * *"   # todos os dias 09:15 UTC (~06:15 BRT)
 
 jobs:
   run:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
+
       - name: Run worker
         env:
+          # URL do tenant 5.11 (pode manter fixo)
           REPSPARK_URL: https://app.repspark.com/_511
+
+          # *** SECRETS *** (defina em Settings → Secrets → Actions)
           REPSPARK_EMAIL: ${{ secrets.REPSPARK_EMAIL }}
           REPSPARK_PASSWORD: ${{ secrets.REPSPARK_PASSWORD }}
           GSHEET_ID: ${{ secrets.GSHEET_ID }}
-          GSHEET_TAB: BASE
           GCP_SA_JSON: ${{ secrets.GCP_SA_JSON }}
+
+          # Aba alvo (opcional)
+          GSHEET_TAB: BASE
+
+          # XPaths (pode ajustar se a UI mudar)
           PRODUCTS_XPATH: "/html/body/div[2]/div[1]/div/div[1]/div[2]/div[2]/div/ul/li[1]/a"
           EXPORT_BTN_ID_XPATH: "//*[@id='ctl00_ctl00_cphB_filterMenu_btnExportToExcelFull']"
           EXPORT_FALLBACK_XPATH: "/html/body/form/div[3]/div[1]/div[3]/div[1]/div/nav/div/div[2]/div/a/span"
-        run: python repspark_worker.py
+        run: |
+          python repspark_worker.py
 
-          - name: Upload debug artifacts
-    if: always()
-    uses: actions/upload-artifact@v4
-    with:
-      name: repspark-debug
-      path: |
-        downloads/**
-        debug_*.png
+      # (opcional) Coletar arquivos de debug/prints e o Excel baixado
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repspark-debug
+          path: |
+            downloads/**
+            debug_*.png
